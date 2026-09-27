@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<form method="GET" class="period-filter mb-4">
+  <label class="me-2">Viewing:</label>
+  <select name="month" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+    {% for m in range(1,13) %}
+    <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ ['','January','February','March','April','May','June','July','August','September','October','November','December'][m] }}</option>
+    {% endfor %}
+  </select>
+  <select name="year" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+    {% for y in range(year-3, year+1) %}
+    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if overspent %}
+<div class="alert alert-warning d-flex align-items-center gap-2">
+  <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+  <div>
+    <strong>Overspending alert:</strong>
+    You have exceeded your budget in
+    {% for b in overspent %}{{ b.category }}{% if not loop.last %}, {% endif %}{% endfor %}.
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-income">
+      <div class="stat-icon"><i class="bi bi-arrow-down-circle-fill"></i></div>
+      <div>
+        <div class="stat-label">Monthly Income</div>
+        <div class="stat-value">{{ currency }}{{ "%.2f"|format(summary.monthly_income) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-expense">
+      <div class="stat-icon"><i class="bi bi-arrow-up-circle-fill"></i></div>
+      <div>
+        <div class="stat-label">Monthly Expenses</div>
+        <div class="stat-value">{{ currency }}{{ "%.2f"|format(summary.monthly_expense) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-balance">
+      <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+      <div>
+        <div class="stat-label">Balance</div>
+        <div class="stat-value">{{ currency }}{{ "%.2f"|format(summary.balance) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-savings">
+      <div class="stat-icon"><i class="bi bi-piggy-bank-fill"></i></div>
+      <div>
+        <div class="stat-label">Savings Rate</div>
+        <div class="stat-value">{{ summary.savings_rate }}%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card panel-card h-100">
+      <div class="card-body">
+        <h5 class="panel-title">Income vs Expenses (Last 6 Months)</h5>
+        <canvas id="trendChart" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card panel-card h-100">
+      <div class="card-body">
+        <h5 class="panel-title">Spending by Category</h5>
+        {% if summary.category_breakdown %}
+        <canvas id="categoryChart" height="220"></canvas>
+        {% else %}
+        <p class="text-muted mb-0">No expenses recorded for this month yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card panel-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="panel-title mb-0">Recent Transactions</h5>
+          <a href="{{ url_for('main.transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        {% if recent_tx %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Date</th><th>Category</th><th>Description</th><th class="text-end">Amount</th></tr></thead>
+            <tbody>
+              {% for tx in recent_tx %}
+              <tr>
+                <td>{{ tx.date.strftime('%d %b %Y') }}</td>
+                <td><span class="badge-cat">{{ tx.category }}</span></td>
+                <td class="text-muted">{{ tx.description or '—' }}</td>
+                <td class="text-end {{ 'text-success' if tx.type=='income' else 'text-danger' }}">
+                  {{ '+' if tx.type == 'income' else '-' }}{{ currency }}{{ "%.2f"|format(tx.amount) }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No transactions yet. <a href="{{ url_for('main.transactions') }}">Add your first one</a>.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card panel-card">
+      <div class="card-body">
+        <h5 class="panel-title">Emergency Fund</h5>
+        {% if ef %}
+        <div class="d-flex justify-content-between mb-1">
+          <span>{{ currency }}{{ "%.2f"|format(ef.current_amount) }} saved</span>
+          <span class="text-muted">Target: {{ currency }}{{ "%.2f"|format(ef.target_amount) }}</span>
+        </div>
+        <div class="progress mb-2" style="height:10px;">
+          <div class="progress-bar bg-primary" style="width: {{ ef.progress_pct }}%"></div>
+        </div>
+        <p class="text-muted small mb-0">Goal: {{ ef.target_months }} months of expenses covered ({{ ef.progress_pct }}%)</p>
+        {% else %}
+        <p class="text-muted mb-0">Set up your emergency fund on the Goals page.</p>
+        {% endif %}
+        <hr>
+        <a href="{{ url_for('main.chatbot') }}" class="btn btn-primary w-100"><i class="bi bi-robot"></i> Ask the AI Advisor</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const trendLabels = {{ trend | map(attribute='label') | list | tojson }};
+  const trendIncome = {{ trend | map(attribute='income') | list | tojson }};
+  const trendExpense = {{ trend | map(attribute='expense') | list | tojson }};
+  const catLabels = {{ summary.category_breakdown.keys() | list | tojson }};
+  const catValues = {{ summary.category_breakdown.values() | list | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

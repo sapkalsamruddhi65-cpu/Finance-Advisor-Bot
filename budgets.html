@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Budgets - {{ app_name }}{% endblock %}
+{% block page_title %}Monthly Budgets{% endblock %}
+{% block content %}
+
+<form method="GET" class="period-filter mb-4">
+  <label class="me-2">Budget period:</label>
+  <select name="month" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+    {% for m in range(1,13) %}
+    <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ ['','January','February','March','April','May','June','July','August','September','October','November','December'][m] }}</option>
+    {% endfor %}
+  </select>
+  <select name="year" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+    {% for y in range(year-3, year+1) %}
+    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<div class="row g-3">
+  {% for row in rows %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card panel-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">{{ row.category }}</h6>
+          {% if row.pct >= 100 %}<span class="badge text-bg-danger">Over Budget</span>
+          {% elif row.pct >= 80 %}<span class="badge text-bg-warning">Near Limit</span>
+          {% elif row.limit > 0 %}<span class="badge text-bg-success">On Track</span>
+          {% else %}<span class="badge text-bg-secondary">Not Set</span>{% endif %}
+        </div>
+        <div class="progress mb-2" style="height:10px;">
+          <div class="progress-bar {{ 'bg-danger' if row.pct>=100 else ('bg-warning' if row.pct>=80 else 'bg-primary') }}"
+               style="width: {{ row.pct if row.pct <= 100 else 100 }}%"></div>
+        </div>
+        <p class="small text-muted mb-3">
+          Spent {{ currency }}{{ "%.2f"|format(row.spent) }}
+          {% if row.limit %} of {{ currency }}{{ "%.2f"|format(row.limit) }} ({{ row.pct }}%){% else %} — no budget set{% endif %}
+        </p>
+        <form method="POST" action="{{ url_for('main.save_budget') }}" class="d-flex gap-2">
+          <input type="hidden" name="month" value="{{ month }}">
+          <input type="hidden" name="year" value="{{ year }}">
+          <input type="hidden" name="category" value="{{ row.category }}">
+          <input type="number" step="0.01" min="0" name="limit" class="form-control form-control-sm" value="{{ row.limit }}" placeholder="Set limit">
+          <button type="submit" class="btn btn-sm btn-primary">Save</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

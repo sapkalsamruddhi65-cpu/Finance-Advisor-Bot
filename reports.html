@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Reports - {{ app_name }}{% endblock %}
+{% block page_title %}Monthly Report{% endblock %}
+{% block content %}
+
+<form method="GET" class="period-filter mb-4 d-print-none">
+  <label class="me-2">Report for:</label>
+  <select name="month" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+    {% for m in range(1,13) %}
+    <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ ['','January','February','March','April','May','June','July','August','September','October','November','December'][m] }}</option>
+    {% endfor %}
+  </select>
+  <select name="year" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+    {% for y in range(year-3, year+1) %}
+    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="window.print()"><i class="bi bi-printer"></i> Print / Save PDF</button>
+</form>
+
+<div class="card panel-card mb-4">
+  <div class="card-body">
+    <h5 class="panel-title">{{ month_name }} {{ year }} Summary</h5>
+    <div class="row text-center g-3 mt-1">
+      <div class="col-6 col-md-3">
+        <div class="report-metric"><div class="report-metric-label">Income</div><div class="report-metric-value text-success">{{ currency }}{{ "%.2f"|format(summary.monthly_income) }}</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="report-metric"><div class="report-metric-label">Expenses</div><div class="report-metric-value text-danger">{{ currency }}{{ "%.2f"|format(summary.monthly_expense) }}</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="report-metric"><div class="report-metric-label">Balance</div><div class="report-metric-value">{{ currency }}{{ "%.2f"|format(summary.balance) }}</div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="report-metric"><div class="report-metric-label">Savings Rate</div><div class="report-metric-value">{{ summary.savings_rate }}%</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card panel-card h-100">
+      <div class="card-body">
+        <h5 class="panel-title">Category-wise Spending</h5>
+        {% if summary.category_breakdown %}
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Category</th><th class="text-end">Amount</th><th class="text-end">% of Expenses</th></tr></thead>
+          <tbody>
+          {% for cat, amt in summary.category_breakdown.items() %}
+            <tr>
+              <td>{{ cat }}</td>
+              <td class="text-end">{{ currency }}{{ "%.2f"|format(amt) }}</td>
+              <td class="text-end">{{ (amt / summary.monthly_expense * 100) | round(1) if summary.monthly_expense else 0 }}%</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No expenses recorded for this period.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card panel-card h-100">
+      <div class="card-body">
+        <h5 class="panel-title">Budget Performance</h5>
+        {% if summary.budget_status %}
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Category</th><th class="text-end">Spent</th><th class="text-end">Limit</th><th class="text-end">%</th></tr></thead>
+          <tbody>
+          {% for b in summary.budget_status %}
+            <tr class="{{ 'table-danger' if b.pct>=100 else ('table-warning' if b.pct>=80 else '') }}">
+              <td>{{ b.category }}</td>
+              <td class="text-end">{{ currency }}{{ "%.2f"|format(b.spent) }}</td>
+              <td class="text-end">{{ currency }}{{ "%.2f"|format(b.limit) }}</td>
+              <td class="text-end">{{ b.pct }}%</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No budgets set for this period. <a href="{{ url_for('main.budgets') }}">Set one up</a>.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card panel-card">
+  <div class="card-body">
+    <h5 class="panel-title"><i class="bi bi-lightbulb-fill text-warning"></i> Recommendations</h5>
+    <ul class="mb-0">
+      {% for r in recommendations %}
+      <li>{{ r }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+{% endblock %}
